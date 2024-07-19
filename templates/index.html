@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>three.js webgl - PCD</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+  <link type="text/css" rel="stylesheet" href="{{ url_for('static', path='/index.css') }}">
+</head>
+<body>
+  <div class="base">
+    <div class="config">
+      <iframe id="iframeConfig" src="/templates/static/config.html" frameborder="5" width="100%" height="100%"></iframe>
+    </div>
+    <div class="play_screen">
+      <iframe id="iframePlayScreen" src="/templates/static/play_screen.html" frameborder="5" width="100%" height="100%"></iframe>
+    </div>
+  </div>
+
+  <script>
+    function callIframeConfigFunction() {
+      const iframeConfig = document.getElementById('iframeConfig');
+      const iframeConfigWindow = iframeConfig.contentWindow;
+      if (iframeConfigWindow && typeof iframeConfigWindow.submitForm === 'function') {
+        iframeConfigWindow.submitForm();
+      } else {
+        console.error('iframeConfigにsubmitForm関数が見つかりません');
+      }
+    }
+
+    window.addEventListener('message', (event) => {
+      if (event.data === 'callIframeConfigFunction') {
+        callIframeConfigFunction();
+      } else if (event.data.type === 'dataFromIframeConfig') {
+        const iframePlayScreen = document.getElementById('iframePlayScreen');
+        iframePlayScreen.contentWindow.postMessage(event.data, '*');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link type="text/css" rel="stylesheet" href="index.css">
+  <style>
+    /* Loading screen styles */
+    #loadingScreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.3);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      display: none;
+    }
+    #loadingScreen .spinner {
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      border-radius: 50%;
+      border-top: 4px solid #000;
+      width: 40px;
+      height: 40px;
+      animation: spin 2s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div id="loadingScreen">
+    <div class="spinner"></div>
+  </div>
+  
+  <h2 class="title">[Config]</h2>
+
+  <form id="configForm">
+    <div class="description">
+      <div class="parameter_name">Select a directory: </div>
+      <input id="dirname" class="upload_data" type="file" name="dirname" webkitdirectory directory multiple />
+    </div>
+
+    <div class="description">
+      <div class="parameter_name">Select a base path: </div>
+      <input id="basepath" class="base_data" type="file"/>
+    </div>
+
+    <div class="parameter_description">
+      <div class="cluster_description">Clustering Parameter</div>
+      <div class="parameter_field">
+        <div>
+          <label>ROUGH_DBSCAN_EPS: </label>
+          <input class="parameter" type="number" name="ROUGH_DBSCAN_EPS" value="0.2" step="0.05" min="0.05" max="5.0">
+        </div>
+        <div>
+          <label>ROUGH_DBSCAN_MIN_POINTS: </label>
+          <input class="parameter" type="number" name="ROUGH_DBSCAN_MIN_POINTS" value="20" step="1" min="1" max="1000">
+        </div>
+        <div>
+          <label>CLUSTER_HEIGHT_THERESH: </label>
+          <input class="parameter" type="number" name="CLUSTER_HEIGHT_THERESH" value="-1.0" step="0.1" min="-5.0" max="5.0">
+        </div>
+        <div>
+          <label>CLUSTER_POINTS_THERESH: </label>
+          <input class="parameter" type="number" name="CLUSTER_POINTS_THERESH" value="150" step="10" min="10" max="1000">
+        </div>
+        <div>
+          <label>CLUSTER_BOX_SIZE_THERESH: </label>
+          <input class="parameter" type="number" name="CLUSTER_BOX_SIZE_THERESH" value="2" step="0.1" min="1" max="10">
+        </div>
+        <div>
+          <label>STRICT_DBSCAN_EPS: </label>
+          <input class="parameter" type="number" name="STRICT_DBSCAN_EPS" value="0.2" step="0.05" min="0.05" max="5.0">
+        </div>
+        <div>
+          <label>STRICT_DBSCAN_MIN_POINTS_DIV: </label>
+          <input class="parameter" type="number" name="STRICT_DBSCAN_MIN_POINTS_DIV" value="10" step="1" min="1" max="100">
+        </div>
+      </div>
+    </div>
+
+    <div class="id_parameter_description">
+      <div class="id_cluster_description">Tracking Parameter</div>
+      <div class="parameter_field">
+        <div>
+          <label>CURRENT_POS_WEIGHT: </label>
+          <input class="parameter" type="number" name="CURRENT_POS_WEIGHT" value="0.4" step="0.1" min="0" max="1.0">
+        </div>
+        <div>
+          <label>PRED_POS_WEIGHT: </label>
+          <input class="parameter" type="number" name="PRED_POS_WEIGHT" value="0.6" step="0.1" min="0" max="1.0">
+        </div>
+        <div>
+          <label>TRACKING_MIN_DISTANCE: </label>
+          <input class="parameter" type="number" name="TRACKING_MIN_DISTANCE" value="1" step="0.1" min="0" max="5.0">
+        <div>
+          <label>GALLARY_RETENTION_PERIOD: </label>
+          <input class="parameter" type="number" name="GALLARY_RETENTION_PERIOD" value="5" step="1" min="1" max="100">
+        </div>
+      </div>
+    </div>
+
+    <div class="submit_form">
+      <input class="parameter" type="button" value="Submit" onclick="submitForm()">
+    </div>
+  </form>
+
+  <script>
+    async function submitForm() {
+      const form = document.getElementById('configForm');
+      const dirInput = document.getElementById('dirname');
+      const baseInput = document.getElementById('basepath');
+      const loadingScreen = document.getElementById('loadingScreen');
+
+      if (!form || !dirInput || !baseInput || !loadingScreen) {
+        console.error("Form, directory input, basepath input, or loading screen not found");
+        return;
+      }
+
+      // Show loading screen
+      loadingScreen.style.display = 'flex';
+
+      const formData = new FormData(form);
+      const dirFiles = dirInput.files;
+      const baseFiles = baseInput.files;
+
+      let directoryName = '';
+      if (dirFiles.length > 0) {
+        const firstFilePath = dirFiles[0].webkitRelativePath || dirFiles[0].name;
+        directoryName = firstFilePath.split('/')[0];
+      }
+
+      let basePathName = '';
+      if (baseFiles.length > 0) {
+        basePathName = baseFiles[0].name;
+      }
+
+      const jsonObject = {};
+      formData.forEach((value, key) => {
+        jsonObject[key] = value;
+      });
+      jsonObject['directoryName'] = directoryName;
+      jsonObject['basePathName'] = basePathName;
+
+      try {
+        const response = await fetch('/get_config_data', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(jsonObject)
+        });
+
+        const result = await response.json();
+        console.log(result);
+        let points = JSON.parse(JSON.stringify(result['cluster_data_points']));
+        let bytes_pt = Uint8Array.from(atob(points), c => c.charCodeAt(0));
+        points = new Float32Array(bytes_pt.buffer);
+
+        let colors = JSON.parse(JSON.stringify(result['cluster_data_colors']));
+        let bytes_colors = Uint8Array.from(atob(colors), c => c.charCodeAt(0));
+        colors = new Float32Array(bytes_colors.buffer);
+
+        let data_num = JSON.parse(JSON.stringify(result['cluster_data_num']));
+        let num_pt = Uint8Array.from(atob(data_num), c => c.charCodeAt(0));
+        data_num = new Int32Array(num_pt.buffer);
+
+        let base_points = JSON.parse(JSON.stringify(result['base_data_points']));
+        let base_bytes_pt = Uint8Array.from(atob(base_points), c => c.charCodeAt(0));
+        base_points = new Float32Array(base_bytes_pt.buffer);
+
+        let base_colors = JSON.parse(JSON.stringify(result['base_data_colors']));
+        let base_bytes_colors = Uint8Array.from(atob(base_colors), c => c.charCodeAt(0));
+        base_colors = new Float32Array(base_bytes_colors.buffer);
+
+        window.parent.postMessage({
+          type: 'dataFromIframeConfig',
+          points: points,
+          colors: colors,
+          data_num: data_num,
+          base_points: base_points,
+          base_colors: base_colors
+        }, '*');
+
+      } catch (error) {
+        console.error("Error submitting form", error);
+      } finally {
+        // Hide loading screen
+        loadingScreen.style.display = 'none';
+      }
+    }
+  </script>
+</body>
+</html>
